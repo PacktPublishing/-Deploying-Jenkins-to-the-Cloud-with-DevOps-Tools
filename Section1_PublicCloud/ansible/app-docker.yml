@@ -1,0 +1,21 @@
+#!/usr/bin/env ansible-playbook
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars.yml
+    - secrets.yml
+
+  vars:
+    - ssh_key_content: "{{ lookup('file', '{{ ssh_key }}.pub') }}"
+    - app_name: "Packt NodeJS"
+    - app_url: "nodejs-dev.{{ dns_domain }}"
+    - app_description: "Packt NodeJS App"
+    - env_name: packt-nodejs-env-dev
+    - solution_stack_name: "64bit Amazon Linux 2017.09 v2.9.2 running Docker 17.12.0-ce"
+
+  roles:
+    - infrastructure_beanstalk

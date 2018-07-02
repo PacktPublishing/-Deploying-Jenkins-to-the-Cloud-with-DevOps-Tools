@@ -1,0 +1,159 @@
+---
+
+aws_region: us-east-1
+
+dns_domain: cloudci.net
+
+alarm_email: dev@martinreinhardt-online.de
+
+ssh_key: ssh/id_rsa
+
+java_packages:
+  - java-1.8.0-openjdk
+java_set_javahome: true
+
+jenkins_url: "jenkins.{{ dns_domain }}"
+
+certbot_admin_email: "letsencrypt@{{ jenkins_url }}"
+certbot_create_if_missing: yes
+certbot_create_standalone_stop_services: []
+certbot_certs:
+  - domains:
+      - "{{ jenkins_url }}"
+
+nginx_vhosts:
+  - listen: "443 ssl http2"
+    server_name: "{{ jenkins_url }}"
+    root: "/usr/share/nginx/html"
+    index: "index.html index.htm"
+    state: "present"
+    template: "{{ nginx_vhost_template }}"
+    filename: "jenkins.conf"
+    extra_parameters: |
+      ssl_certificate     /etc/letsencrypt/live/{{ jenkins_url }}/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/{{ jenkins_url }}/privkey.pem;
+      ssl_protocols       TLSv1.1 TLSv1.2;
+      ssl_ciphers         HIGH:!aNULL:!MD5;
+      location / {
+        add_header X-Frame-Options "SAMEORIGIN";
+        add_header 'X-SSH-Endpoint' '{{ jenkins_url }}:2222' always;
+        proxy_set_header    Host $host:$server_port;
+        proxy_set_header    X-Real-IP $remote_addr;
+        proxy_set_header    X-Forward-For $proxy_add_x_forwarded_for;
+        proxy_set_header    X-Forwarded-Proto https;
+        proxy_set_header    X-Forwarded-Ssl on;
+        proxy_set_header    X-Nginx-Proxy true;
+
+        # For WebSocket proxying
+        proxy_http_version 1.1;
+        proxy_set_header    Upgrade $http_upgrade;
+        proxy_set_header    Connection "upgrade";
+
+        # Required for new HTTP-based CLI
+        proxy_request_buffering off;
+
+        proxy_redirect http:// https://;
+        proxy_pass http://localhost:8080;
+
+        #this is the maximum upload size
+        client_max_body_size       10m;
+        client_body_buffer_size    128k;
+
+        proxy_connect_timeout      90;
+        proxy_send_timeout         90;
+        proxy_read_timeout         90;
+
+        proxy_buffer_size          4k;
+        proxy_buffers              4 32k;
+        proxy_busy_buffers_size    64k;
+        proxy_temp_file_write_size 64k;
+      }
+
+jenkins_plugins:
+  - ace-editor
+  - amazon-ecs
+  - analysis-core
+  - ansible
+  - ant
+  - antisamy-markup-formatter
+  - apache-httpcomponents-client-4-api
+  - authentication-tokens
+  - aws-beanstalk-publisher-plugin
+  - aws-credentials
+  - aws-java-sdk
+  - awseb-deployment-plugin
+  - blueocean
+  - blueocean-autofavorite
+  - blueocean-bitbucket-pipeline
+  - blueocean-commons
+  - blueocean-config
+  - blueocean-dashboard
+  - blueocean-display-url
+  - blueocean-events
+  - blueocean-git-pipeline
+  - blueocean-github-pipeline
+  - blueocean-i18n
+  - blueocean-jira
+  - blueocean-jwt
+  - blueocean-personalization
+  - blueocean-pipeline-api-impl
+  - blueocean-pipeline-editor
+  - blueocean-pipeline-scm-api
+  - blueocean-rest
+  - blueocean-rest-impl
+  - blueocean-web
+  - bouncycastle-api
+  - branch-api
+  - build-blocker-plugin
+  - build-monitor-plugin
+  - build-timeout
+  - conditional-buildstep
+  - docker-commons
+  - docker-plugin
+  - docker-workflow
+  - ec2
+  - envinject
+  - git-changelog
+  - git-client
+  - git-parameter
+  - git-server
+  - github
+  - github-api
+  - github-branch-source
+  - greenballs
+  - pipeline-aggregator-view
+  - pipeline-build-step
+  - pipeline-github-lib
+  - pipeline-graph-analysis
+  - pipeline-input-step
+  - pipeline-milestone-step
+  - pipeline-model-api
+  - pipeline-model-declarative-agent
+  - pipeline-model-definition
+  - pipeline-model-extensions
+  - pipeline-rest-api
+  - pipeline-stage-step
+  - pipeline-stage-tags-metadata
+  - pipeline-stage-view
+  - pipeline-utility-steps
+  - github-organization-folder
+  - script-security
+  - ssh
+  - ssh-agent
+  - ssh-credentials
+  - ssh-slaves
+  - workflow-aggregator
+  - workflow-api
+  - workflow-basic-steps
+  - workflow-cps
+  - workflow-cps-global-lib
+  - workflow-durable-task-step
+  - workflow-job
+  - workflow-multibranch
+  - workflow-scm-step
+  - workflow-step-api
+  - workflow-support
+
+brightbox_ruby_packages:
+  - ruby2.2
+  - ruby2.2-dev

@@ -1,0 +1,15 @@
+---
+
+- geerlingguy.certbot
+
+- geerlingguy.jenkins
+
+- geerlingguy.nginx
+
+- geerlingguy.docker
+
+- geerlingguy.nodejs
+
+- srsp.oracle-java
+
+- MichaelRigart.brightbox-ruby

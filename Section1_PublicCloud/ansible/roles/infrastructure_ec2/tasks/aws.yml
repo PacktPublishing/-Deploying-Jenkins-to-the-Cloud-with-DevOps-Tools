@@ -1,0 +1,11 @@
+---
+- name: Create IAM role for Beanstalk
+  iam:
+    iam_type: role
+    name: BeanstalkRole
+    state: present
+    trust_policy: "{{ lookup( 'template', 'policy.beanstalk.json.j2') }}"
+  register: iam_beanstalk_role
+
+- debug:
+    var: iam_beanstalk_role

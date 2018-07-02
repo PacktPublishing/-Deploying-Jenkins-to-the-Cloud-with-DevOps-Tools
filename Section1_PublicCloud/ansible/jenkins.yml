@@ -1,0 +1,90 @@
+#!/usr/bin/env ansible-playbook
+---
+# Play 1: Provision EC2 instance and A record.
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars.yml
+    - secrets.yml
+
+  roles:
+    - infrastructure_ec2
+
+
+# Play 2: Configure EC2 instance with Certbot and Nginx.
+- hosts: jenkins
+  gather_facts: yes
+  remote_user: centos
+  become_method: sudo
+  become: yes
+
+  vars_files:
+    - vars.yml
+    - secrets.yml
+
+  pre_tasks:
+
+    - name: Update apt cache.
+      apt: update_cache=yes cache_valid_time=600
+      when: ansible_os_family == 'Debian'
+      changed_when: false
+
+    - name: Install dependencies (RedHat).
+      yum: name={{ item }} state=present
+      when: ansible_os_family == 'RedHat'
+      with_items:
+        - cronie
+        - epel-release
+        - git
+
+    # Disable SELinux
+    - selinux:
+        state: disabled
+      when: ansible_os_family == 'RedHat'
+
+    - name: Install cron (Debian).
+      apt: name=cron state=present
+      when: ansible_os_family == 'Debian'
+
+  roles:
+    - srsp.oracle-java
+    - geerlingguy.certbot
+    - geerlingguy.jenkins
+    - geerlingguy.nginx
+    - geerlingguy.nodejs
+
+  tasks:
+
+    - name: Flush handlers in case any configs have changed.
+      meta: flush_handlers
+
+    - name: Setting Jenkins AWS Config
+      set_fact:
+        access_key: "{{ jenkins_aws_access_key }}"
+        secret_key: "{{ jenkins_aws_secret_key }}"
+        env_vars: 
+          - { name: AWS_ACCESS_KEY_ID ,value: "{{ jenkins_aws_access_key }}" }
+          - { name: AWS_SECRET_ACCESS_KEY ,value: "{{ jenkins_aws_secret_key }}" }
+      no_log: true
+  
+    - name: AWS | Configure Env
+      jenkins_script:
+        script: "{{ lookup( 'template', 'jenkins.set_env.groovy.j2') }}"
+        user: "{{ jenkins_admin_username }}"
+        password: "{{ jenkins_admin_password }}"
+      no_log: true
+
+    - name: AWS | Configure Jenkins Credentials
+      jenkins_script:
+        script: "{{ lookup( 'template', 'jenkins.aws.groovy.j2') }}"
+        user: "{{ jenkins_admin_username }}"
+        password: "{{ jenkins_admin_password }}"
+
+    - name: Test secure connection to SSL domain.
+      uri:
+        url: "https://{{ jenkins_url }}"
+        status_code: 200
+      delegate_to: localhost
+      become: no

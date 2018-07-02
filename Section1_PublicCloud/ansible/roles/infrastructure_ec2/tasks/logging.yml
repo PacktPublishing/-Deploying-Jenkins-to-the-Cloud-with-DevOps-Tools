@@ -1,0 +1,71 @@
+---
+
+- name: Gathering facts
+  set_fact:
+    account_id: "{{ aws_region | get_account_id() }}"
+    bucket_name: packtcicourse
+
+- name: Create Logging S3 Bucket
+  s3_bucket:
+    name: "{{ bucket_name }}"
+    policy: "{{ lookup( 'template', 'policy.bucket.json.j2') }}"
+  run_once: True
+
+- name: create single region cloudtrail
+  cloudtrail:
+    state: present
+    name: default
+    s3_bucket_name: "{{ bucket_name }}"
+    s3_key_prefix: cloudtrail
+    region: "{{ aws_region }}"
+    tags:
+      environment: dev
+  run_once: True
+
+- name: create alarm SNS topic
+  sns_topic:
+    name: "jenkins-alarms"
+    state: present
+    display_name: "alarm SNS topic"
+    region: "{{ aws_region }}"
+    delivery_policy:
+      http:
+        defaultHealthyRetryPolicy:
+            minDelayTarget: 2
+            maxDelayTarget: 4
+            numRetries: 10
+            numMaxDelayRetries: 5
+        disableSubscriptionOverrides: True
+        defaultThrottlePolicy:
+            maxReceivesPerSecond: 10
+    subscriptions:
+      - endpoint: "{{ alarm_email }}"
+        protocol: "email"
+      - endpoint: "12345678"
+        protocol: "sms"
+  register: sns_jenkins_alarm
+
+- debug:
+    var: sns_jenkins_alarm
+    verbosity: 1
+
+- debug:
+    var: created_jenkins_instance.tagged_instances.0.id
+    verbosity: 1
+
+- name: create alarm
+  ec2_metric_alarm:
+    state: present
+    region: "{{ aws_region }}"
+    name: "cpu-high"
+    metric: "CPUUtilization"
+    namespace: "AWS/EC2"
+    statistic: Average
+    comparison: ">="
+    threshold: 5.0
+    period: 300
+    evaluation_periods: 3
+    unit: "Percent"
+    description: "This will alarm when a jenkins cpu usage average is greather than 5% for 15 minutes"
+    dimensions: {'InstanceId':"{{ created_jenkins_instance.tagged_instances.0.id }}"}
+    alarm_actions: ["{{ sns_jenkins_alarm.sns_arn }}"]

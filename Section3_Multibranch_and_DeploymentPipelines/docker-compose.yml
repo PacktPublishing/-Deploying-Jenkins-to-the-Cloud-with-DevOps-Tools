@@ -1,0 +1,114 @@
+version: '2.1'
+services:
+  registry:
+    container_name: docker_registry
+    image: registry:2
+    ports:
+      - 5000:5000
+    volumes:
+      - ${REGISTRY_DATA_DIR}:/var/lib/registry
+
+  jenkins:
+    container_name: jenkins_server
+    build: docker/build/jenkins
+    healthcheck:
+        test: ["CMD", "wget", "http://localhost:${JENKINS_SERVER_PORT}/login"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+    ports:
+      - "${JENKINS_SERVER_PORT}:8080"
+    volumes:
+      - ${JENKINS_DATA_DIR}/home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    user: root
+    environment:
+      - JENKINS_ADMIN_USER
+      - JENKINS_ADMIN_PASS
+      - JENKINS_ADMIN_ADDR
+      - JENKINS_SERVER_PORT
+      - JENKINS_IMAGE_VERSION
+      - JENKINS_DATA_DIR
+      - JENKINS_EXECUTORS
+      - JENKINS_GIT_NAME
+      - JENKINS_GIT_EMAIL
+      - JENKINS_SLAVE_AGENT_PORT
+      - JENKINS_QUIET_PERIOD
+    links:
+      - gitlab
+
+  redis:
+    container_name: gitlab_redis
+    restart: always
+    image: sameersbn/redis:latest
+    command:
+    - --loglevel warning
+    volumes:
+    - ${GITLAB_REDIS_DIR}:/var/lib/redis:Z
+
+  postgresql:
+    container_name: gitlab_db
+    restart: always
+    image: sameersbn/postgresql:9.6-2
+    volumes:
+    - ${GITLAB_DB_DIR}:/var/lib/postgresql:Z
+    environment:
+    - DB_USER=gitlab
+    - DB_PASS=password
+    - DB_NAME=gitlabhq_production
+    - DB_EXTENSION=pg_trgm
+
+  gitlab:
+    container_name: gitlab_server
+    image: sameersbn/gitlab:${GITLAB_VERSION}
+    depends_on:
+      - postgresql
+      - redis
+    links:
+      - postgresql
+      - redis
+    ports:
+      - "8222:22"
+      - "8280:80"
+      - "8243:443"
+    volumes:
+      - ${GITLAB_DATA_DIR}/home:/home/git/data:Z
+    environment:
+    - DEBUG=false
+
+    - DB_ADAPTER=postgresql
+    - DB_HOST=postgresql
+    - DB_PORT=5432
+    - DB_USER=gitlab
+    - DB_PASS=password
+    - DB_NAME=gitlabhq_production
+
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+
+    - TZ=Asia/Kolkata
+    - GITLAB_TIMEZONE=Kolkata
+
+    - GITLAB_HTTPS=false
+    - SSL_SELF_SIGNED=false
+
+    - GITLAB_HOST=gitlab
+    - GITLAB_PORT=80
+    - GITLAB_SSH_PORT=22
+    - GITLAB_RELATIVE_URL_ROOT=
+    - GITLAB_SECRETS_DB_KEY_BASE=long-and-random-alphanumeric-string
+    - GITLAB_SECRETS_SECRET_KEY_BASE=long-and-random-alphanumeric-string
+    - GITLAB_SECRETS_OTP_KEY_BASE=long-and-random-alphanumeric-string
+
+    - GITLAB_ROOT_PASSWORD=password
+    - GITLAB_ROOT_EMAIL=
+
+    - GITLAB_NOTIFY_ON_BROKEN_BUILDS=true
+    - GITLAB_NOTIFY_PUSHER=false
+
+    - GITLAB_EMAIL=notifications@example.com
+    - GITLAB_EMAIL_REPLY_TO=noreply@example.com
+    - GITLAB_INCOMING_EMAIL_ADDRESS=reply@example.com
+
+    - GITLAB_BACKUP_SCHEDULE=daily
+    - GITLAB_BACKUP_TIME=01:00

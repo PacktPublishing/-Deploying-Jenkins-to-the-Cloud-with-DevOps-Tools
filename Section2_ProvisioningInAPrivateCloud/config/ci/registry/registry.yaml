@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: registry-access
+  namespace: ci
+  labels:
+    app: registry
+data:
+  .dockercfg: ewoJImF1dGhzIjogewoJCSJsb2NhbGhvc3Q6NTAwMCI6IHsKCQkJImF1dGgiOiAiWVdSdGFXNDZZV1J0YVc0PSIKCQl9Cgl9LAoJIkh0dHBIZWFkZXJzIjogewoJCSJVc2VyLUFnZW50IjogIkRvY2tlci1DbGllbnQvMTguMDMuMC1jZSAobGludXgpIgoJfQp9
+type: kubernetes.io/dockercfg
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: registry-auth-data
+  namespace: ci
+  labels:
+    app: registry
+type: Opaque
+data:
+  htpasswd: YWRtaW46JDJ5JDA1JGZTa0hRSWtlTEllRmZ6WEtNS3ROa3V2ZVdJTUowNXR2Ui5lRzRwRWhTajlqZVh2T3VvbFFxCgo=
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: registry-pv-claim
+  namespace: ci
+  labels:
+    app: registry
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: registry
+  namespace: ci
+  labels:
+    app: registry
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: registry
+    spec:
+      containers:
+      - name: registry
+        image: registry:2
+        resources:
+          # keep request = limit to keep this container in guaranteed class
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+        - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+          value: /var/lib/registry
+        - name: REGISTRY_AUTH
+          value: htpasswd
+        - name: REGISTRY_AUTH_HTPASSWD_REALM
+          value: basic_realm
+        - name: REGISTRY_AUTH_HTPASSWD_PATH
+          value: /auth/htpasswd
+        volumeMounts:
+        - name: image-store
+          mountPath: /var/lib/registry
+        - name: auth-dir
+          mountPath: /auth
+          readOnly: true
+        ports:
+        - containerPort: 5000
+          name: registry
+          protocol: TCP
+      volumes:
+      - name: image-store
+        persistentVolumeClaim:
+          claimName: registry-pv-claim
+      - name: auth-dir
+        secret:
+          secretName: registry-auth-data
+---
+  kind: Service
+  apiVersion: v1
+  metadata:
+    name: registry
+    namespace: ci
+    labels:
+      app: registry
+  spec:
+    type: NodePort
+    selector:
+      app: registry
+    ports:
+      - protocol: TCP
+        port: 5000
+        targetPort: 5000
+        name: api

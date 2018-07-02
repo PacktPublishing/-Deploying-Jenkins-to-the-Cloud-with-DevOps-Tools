@@ -1,0 +1,10 @@
+{
+    "auths": {
+            "10.98.25.188:5000": {
+                    "auth": "YWRtaW46YWRtaW4="
+            }
+    },
+    "HttpHeaders": {
+            "User-Agent": "Docker-Client/18.03.0-ce (linux)"
+    }
+}

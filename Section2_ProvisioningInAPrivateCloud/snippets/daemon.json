@@ -1,0 +1,7 @@
+{
+    "debug" : true,
+    "insecure-registries" : [
+      "registry.ci:5000"
+    ],
+    "experimental" : true
+  }

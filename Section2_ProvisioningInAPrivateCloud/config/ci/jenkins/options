@@ -1,0 +1,1 @@
+ -Djenkins.install.runSetupWizard=false --argumentsRealm.passwd.jenkins=admin --argumentsRealm.roles.admin=admin --argumentsRealm.roles.user=admin

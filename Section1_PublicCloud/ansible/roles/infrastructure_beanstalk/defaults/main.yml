@@ -1,0 +1,5 @@
+---
+app_name: "Packt SpringBoot"
+app_description: "Packt SpringBoot App"
+env_name: packt-spring-env-dev
+solution_stack_name: "64bit Amazon Linux 2017.09 v2.6.8 running Java 8"

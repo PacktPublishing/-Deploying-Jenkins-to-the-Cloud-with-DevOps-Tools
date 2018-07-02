@@ -1,0 +1,7 @@
+---
+
+- include_tasks: jenkins.yml
+
+- include_tasks: aws.yml
+
+- include_tasks: logging.yml

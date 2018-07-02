@@ -1,0 +1,21 @@
+#!/usr/bin/env ansible-playbook
+---
+
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars.yml
+    - secrets.yml
+
+  vars:
+    - ssh_key_content: "{{ lookup('file', '{{ ssh_key }}.pub') }}"
+    - app_name: "Packt SpringBoot"
+    - app_url: "springboot-dev.{{ dns_domain }}"
+    - app_description: "Packt SpringBoot App"
+    - env_name: packt-spring-env-dev
+    - solution_stack_name: "64bit Amazon Linux 2017.09 v2.6.8 running Java 8"
+
+  roles:
+    - infrastructure_beanstalk

@@ -1,0 +1,80 @@
+---
+- name: Create beanstalk app
+  elasticbeanstalk_app:
+    app_name: "{{ app_name }}"
+    description: "{{ app_description }}"
+    state: present
+    region: "{{ aws_region }}"
+  run_once: True
+
+- name: Get BeanstalkRole
+  iam:
+    iam_type: role
+    name: BeanstalkRole
+    state: present
+  register: iam_beanstalk_role
+
+- name: Create beanstalk env
+  elasticbeanstalk_env:
+    region: "{{ aws_region }}"
+    app_name: "{{ app_name }}"
+    env_name: "{{ env_name }}"
+    solution_stack_name: "{{ solution_stack_name }}"
+    option_settings:
+      - Namespace: "aws:autoscaling:launchconfiguration"
+        OptionName: InstanceType
+        Value: "t2.micro"
+      - Namespace: "aws:elasticbeanstalk:application:environment"
+        OptionName: SERVER_PORT
+        Value: "5000"
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: IamInstanceProfile
+        Value: "{{ iam_beanstalk_role.instance_profile_result.arn }}"
+      - Namespace: "aws:elasticbeanstalk:healthreporting:system:"
+        OptionName: SystemType
+        Value: "enhanced"
+  register: app_beanstalk_env
+  run_once: True
+  
+- debug:
+    var: app_beanstalk_env
+    verbosity: 1
+
+- name: Get EC2 Instances Facts
+  ec2_instance_facts:
+    region: "{{ aws_region }}"
+  register: ec2_facts
+
+- name: Filter EC2 Instances
+  set_fact:
+    created_app_instances: |
+      {% set instances = [] %}
+      {% for item in ec2_facts.instances if 'elasticbeanstalk:environment-id' in item.tags and item.tags['elasticbeanstalk:environment-id'] == app_beanstalk_env.env.EnvironmentId -%}
+        {{ instances.append(item) }}
+      {%- endfor %}
+      {{ instances }}
+
+- debug:
+    var: created_app_instances.0
+    verbosity: 1
+
+- name: Add A record for the app in Route53.
+  route53:
+    command: create
+    zone: "{{ dns_domain }}"
+    record: "{{ app_url }}"
+    type: CNAME
+    ttl: 300
+    value: "{{ app_beanstalk_env.env.EndpointURL }}"
+    wait: yes
+    overwrite: yes
+
+- name: Add EC2 instance to inventory groups.
+  add_host:
+    name: "{{ app_url }}"
+    groups: "apps"
+    ansible_ssh_private_key_file: "ansible/{{ ssh_key }}"
+    ansible_ssh_user: ec2-user
+    ansible_ssh_port: 22
+    host_key_checking: False
+  when: created_app_instances.0.instance_id is defined

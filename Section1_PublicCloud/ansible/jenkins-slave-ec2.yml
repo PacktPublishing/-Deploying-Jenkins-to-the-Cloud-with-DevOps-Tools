@@ -1,0 +1,94 @@
+#!/usr/bin/env ansible-playbook
+---
+# Play 1: Provision EC2 instance and A record.
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars.yml
+    - secrets.yml
+
+  tasks:
+
+
+    - name: Add EC2 Key Pair.
+      ec2_key:
+        region: "{{ aws_region }}"
+        name: ci
+        key_material: "{{ lookup('file', '{{ ssh_key }}.pub') }}"
+
+    - name: Provision EC2 instance.
+      ec2:
+        key_name: ci
+        instance_tags:
+          Name: "jenkins_slave"
+        group: ['default']
+        instance_type: m4.large
+        image: ami-02e98f78 # CentOS Linux 7 x86_64 HVM EBS
+        region: "{{ aws_region }}"
+        wait: yes
+        wait_timeout: 500
+        exact_count: 1
+        count_tag:
+          Name: "jenkins_slave"
+      register: created_jenkins_slaves_instance
+
+    - debug:
+        var: created_jenkins_slaves_instance
+        verbosity: 1
+
+    - name: Add EC2 instance to inventory groups.
+      add_host:
+        name: "{{ jenkins_url }}"
+        groups: "ci,jenkins_slaves"
+        ansible_ssh_private_key_file: "ansible/{{ ssh_key }}"
+        ansible_ssh_user: centos
+        ansible_ssh_port: 22
+        host_key_checking: False
+      when: created_jenkins_slaves_instance.tagged_instances.0.id is defined
+
+# Play 2: Configure EC2 instance with Certbot and Nginx.
+- hosts: jenkins_slaves
+  gather_facts: yes
+  remote_user: centos
+  become_method: sudo
+  become: yes
+
+  vars_files:
+    - vars.yml
+    - secrets.yml
+
+  pre_tasks:
+
+    - name: Update apt cache.
+      apt: update_cache=yes cache_valid_time=600
+      when: ansible_os_family == 'Debian'
+      changed_when: false
+
+    - name: Install dependencies (RedHat).
+      yum: name={{ item }} state=present
+      when: ansible_os_family == 'RedHat'
+      with_items:
+        - cronie
+        - epel-release
+        - git
+
+    # Disable SELinux
+    - selinux:
+        state: disabled
+      when: ansible_os_family == 'RedHat'
+
+    - name: Install cron (Debian).
+      apt: name=cron state=present
+      when: ansible_os_family == 'Debian'
+
+  roles:
+    - srsp.oracle-java
+    - geerlingguy.nginx
+    - geerlingguy.nodejs
+
+  tasks:
+
+    - name: Flush handlers in case any configs have changed.
+      meta: flush_handlers

@@ -1,0 +1,10 @@
+version: '2.1'
+services:
+
+  registry:
+    container_name: docker_registry
+    image: registry:2
+    ports:
+      - 5000:5000
+    volumes:
+      - ${REGISTRY_DATA_DIR}:/var/lib/registry

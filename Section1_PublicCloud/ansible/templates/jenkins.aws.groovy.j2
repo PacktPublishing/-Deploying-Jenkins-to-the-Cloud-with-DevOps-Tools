@@ -1,0 +1,24 @@
+import jenkins.model.*
+import com.cloudbees.hudson.plugins.folder.*
+import com.cloudbees.hudson.plugins.folder.properties.*
+import com.cloudbees.plugins.credentials.impl.*
+import com.cloudbees.plugins.credentials.*
+import com.cloudbees.plugins.credentials.domains.*
+import com.cloudbees.jenkins.plugins.awscredentials.AWSCredentialsImpl
+
+instance = Jenkins.instance
+
+def domain = com.cloudbees.plugins.credentials.domains.Domain.global()
+def store = instance.getExtensionList('com.cloudbees.plugins.credentials.SystemCredentialsProvider')[0].getStore()
+
+// Create the SSH credential
+def jenkins_creds = new AWSCredentialsImpl(
+	com.cloudbees.plugins.credentials.CredentialsScope.GLOBAL,
+	'aws-default',
+	'{{ access_key }}',
+	'{{ secret_key}}',
+	'AWS'
+	)
+store.addCredentials(domain, jenkins_creds)
+
+instance.save()

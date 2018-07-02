@@ -1,0 +1,10 @@
+ansible>=2.5.0
+awscli
+boto
+awsretry
+boto3
+botocore
+jinja2>=2.9.6
+netaddr
+pbr>=1.6
+requests

@@ -1,0 +1,73 @@
+---
+
+- name: Configure EC2 Security Group.
+  ec2_group:
+    name: jenkins
+    description: Security group for Jenkins
+    region: "{{ aws_region }}"
+    state: present
+    rules:
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 50000
+        to_port: 50000
+        cidr_ip: 0.0.0.0/0
+    rules_egress: []
+
+- name: Add EC2 Key Pair.
+  ec2_key:
+    region: "{{ aws_region }}"
+    name: ci
+    key_material: "{{ lookup('file', '{{ ssh_key }}.pub') }}"
+
+- name: Provision EC2 instance.
+  ec2:
+    key_name: ci
+    instance_tags:
+      Name: "jenkins_master"
+    group: ['default', 'jenkins']
+    instance_type: m4.large
+    image: ami-02e98f78 # CentOS Linux 7 x86_64 HVM EBS
+    region: "{{ aws_region }}"
+    wait: yes
+    wait_timeout: 500
+    exact_count: 1
+    count_tag:
+      Name: "jenkins_master"
+  register: created_jenkins_instance
+
+- debug:
+    var: created_jenkins_instance
+    verbosity: 1
+
+- name: Add A record for the new EC2 instance IP in Route53.
+  route53:
+    command: create
+    zone: "{{ dns_domain }}"
+    record: "{{ jenkins_url }}"
+    type: A
+    ttl: 300
+    value: "{{ created_jenkins_instance.tagged_instances.0.public_ip }}"
+    wait: yes
+    overwrite: yes
+
+- name: Add EC2 instance to inventory groups.
+  add_host:
+    name: "{{ jenkins_url }}"
+    groups: "ci,jenkins"
+    ansible_ssh_private_key_file: "ansible/{{ ssh_key }}"
+    ansible_ssh_user: centos
+    ansible_ssh_port: 22
+    host_key_checking: False
+  when: created_jenkins_instance.tagged_instances.0.id is defined

@@ -1,0 +1,13 @@
+#!/usr/bin/env ansible-playbook
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars.yml
+    - secrets.yml
+
+  tasks:
+    - ec2_remote_facts:
+        region: "{{ aws_region }}"
