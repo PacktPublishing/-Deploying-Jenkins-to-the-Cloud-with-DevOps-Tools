@@ -2,3 +2,4 @@ ansible/.imported-roles
 ansible/*.retry
 ansible/plugins/filter-plugins/__pycache__/
 *.iml
+*.pyc
