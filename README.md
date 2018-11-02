@@ -1,5 +1,8 @@
-# -Deploying-Jenkins-to-the-Cloud-with-DevOps-Tools
+# Deploying-Jenkins-to-the-Cloud-with-DevOps-Tools
  Codes for Deploying Jenkins to the Cloud with DevOps Tools, Published by Packt
+ 
+ [![Slack](https://img.shields.io/badge/chat-%20%20-brightgreen.svg)](https://join.slack.com/t/packtcourse/signup)
+
 # Deploying Jenkins to the Cloud with DevOps Tools [Video]
 This is the code repository for [Deploying Jenkins to the Cloud with DevOps Tools [Video]](https://www.packtpub.com/networking-and-servers/deploying-jenkins-cloud-devops-tools-video?utm_source=github&utm_medium=repository&utm_campaign=9781788839778), published by [Packt](https://www.packtpub.com/?utm_source=github). It contains all the supporting project files necessary to work through the video course from start to finish.
 ## About the Video Course
