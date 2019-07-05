@@ -36,6 +36,8 @@ gitlabdb_pod="$(kubectl get pods --selector=app=postgresql | tail -n +2 | awk '{
 kubectl cp ./tmp/gitlab-db/main $gitlabdb_pod:/var/lib/postgresql/9.6
 gitlab_pod="$(kubectl get pods --selector=app=gitlab | tail -n +2 | awk '{print $1}')"
 kubectl cp ./tmp/gitlab/data $gitlab_pod:/home/git
+kubectl exec $gitlab_pod -- chown -R git:git /home/git/data
+
 # clean up
 rm -rf ./tmp
 
