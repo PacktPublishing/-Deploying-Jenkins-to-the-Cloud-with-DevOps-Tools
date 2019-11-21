@@ -9,5 +9,5 @@
     - secrets.yml
 
   tasks:
-    - ec2_remote_facts:
+    - ec2_instance_fact:
         region: "{{ aws_region }}"
